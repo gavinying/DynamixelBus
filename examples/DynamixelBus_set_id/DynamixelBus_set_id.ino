@@ -10,8 +10,10 @@
 DynamixelXL320 robot;
 //DynamixelAX12 robot;
 
-// Set the target servoID to talk to
-int currentId = -1;
+// Current servo ID
+int currentId = 2;
+// The servo ID to change to
+// Hint: servo ID range: 1-253, don't set to 0, otherwise cannot change back to none-zero ID
 int targetId = 1;
 
 int pin_led = 2;  // Internal LED
@@ -34,21 +36,23 @@ void setup() {
   // Initialise your robot
   robot.begin(Serial, pin_direction); // Hand in the serial object you're using
 
-  delay(1000);
+  delay(3000);
   
 }
 
 void loop() {
-  // Check ID
-  currentId = robot.searchId();
-  if(currentId < 0) {
+  // Check Servo ID, make sure only one device connected. 
+  int id = robot.searchId();
+  if(id < 0) {
     Serial1.println("No device found.");
   }
+  else if(id != currentId) {
+    Serial1.print("Found servo ID: ");Serial1.print(id);Serial1.print(" , but not expected: ");Serial1.println(currentId);
+  }
   else {
-    Serial1.print("Current Servo ID: "); Serial1.println(currentId);
     if(currentId != targetId) {
-      robot.setId(targetId);
-      Serial1.print("Set Servo ID to "); Serial1.println(targetId);
+      robot.setId(currentId, targetId);
+      Serial1.print("Set current servo ID from "); Serial1.print(currentId); Serial1.print(" to "); Serial1.println(targetId);
     }
   }
   delay(2000);

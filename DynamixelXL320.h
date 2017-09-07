@@ -4,12 +4,11 @@
  Copyright (c) 2011 Savage Electronics.
  And Dynamixel Pro library for OpenCM-9.04 made by ROBOTIS, LTD.
  And Arduino library for Dynamixel XL-320 made by hackerspace-adelaide/XL320
-
  Thanks to all the above authors for the great work!
 
- Modified to work with both packet sending and receiving functions.
-
  Modifications made by Ying Shaodong <helloysd@gmail.com>
+ 1) Modified to work with both packet sending and receiving functions;
+ 2) Support debug function on ESP8266 Serial1 port
 
  This file can be used and be modified by anyone under GPL v2.0
 
@@ -92,19 +91,19 @@ public:
   void begin(Stream &stream, int pin_d);
 
   int searchId();
-  void setId(int id);
+  void setId(int id, int targetId);
   int getBaudrate(int id);
   void setBaudrate(int id, int value);
   void setLed(int id, char led_color[]);
 
   int getJointPosition(int id);
 
-  void p2_sendPingPacket();
-  void p2_sendReadPacket(int id, int address, int length);
-  void p2_sendWriteU8Packet(int id, int address, int value);
-  void p2_sendWriteU16Packet(int id, int address, int value);
+  void sendPingPacket();
+  void sendReadPacket(int id, int address, int length);
+  void sendWriteU8Packet(int id, int address, int value);
+  void sendWriteU16Packet(int id, int address, int value);
 
-  int p2_receivePacket(unsigned char *buffer, size_t size);
+  int receivePacket(unsigned char *buffer, size_t size);
 
   class Packet {
     bool freeData;

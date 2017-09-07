@@ -3,13 +3,12 @@
  Dynamixel.cpp - Ax-12+ Half Duplex USART Comunication
  Copyright (c) 2011 Savage Electronics.
  And Dynamixel Pro library for OpenCM-9.04 made by ROBOTIS, LTD.
- And Arduino library for Dynamixel XL-320 made by hackerspace-adelaide/AX12
-
+ And Arduino library for Dynamixel XL-320 made by hackerspace-adelaide/XL320
  Thanks to all the above authors for the great work!
 
- Modified to work with both packet sending and receiving functions.
-
  Modifications made by Ying Shaodong <helloysd@gmail.com>
+ 1) Modified to work with both packet sending and receiving functions;
+ 2) Support debug function on ESP8266 Serial1 port
 
  This file can be used and be modified by anyone under GPL v2.0
 
@@ -17,6 +16,8 @@
 
 #include "Arduino.h"
 #include <DynamixelAX12.h>
+
+//#define DEBUG
 
 // Select the Switch to TX/RX Mode Pin
 #define RX  0
@@ -36,7 +37,7 @@ void DynamixelAX12::begin(Stream &stream, int pin_d) {
   pin_direction = pin_d;
   pinMode(pin_direction, OUTPUT);
   this->stream = &stream;
-  stream.setTimeout(1000);  // timeout = 1 second
+  stream.setTimeout(10);  // timeout = 10 millisecond
 }
 
 int DynamixelAX12::searchId() {
@@ -131,6 +132,9 @@ int DynamixelAX12::getJointPosition(int id) {
     if(p.isValid() && p.getParameterCount()>=2) {
       return (p.getParameter(0))|(p.getParameter(1)<<8);
     } else {
+      #ifdef DEBUG
+        Serial1.println("Invalid");
+      #endif
       return ERROR_INVALID;
     }
   }
@@ -144,6 +148,10 @@ void DynamixelAX12::sendReadPacket(int id, int address, int length){
       DXL_LOBYTE(length));
     stream->write(txbuffer,bufsize);
     stream->flush();
+    #ifdef DEBUG
+      Serial1.print(" [DEBUG] Sent Read -> ");
+      p.toStream(Serial1);
+    #endif
 }
 
 void DynamixelAX12::sendWriteU8Packet(int id, int address, int value){
@@ -154,6 +162,10 @@ void DynamixelAX12::sendWriteU8Packet(int id, int address, int value){
       DXL_LOBYTE(value));
     stream->write(txbuffer,bufsize);
     stream->flush();
+    #ifdef DEBUG
+      Serial1.print(" [DEBUG] Sent WriteU8 -> ");
+      p.toStream(Serial1);
+    #endif
 }
 
 void DynamixelAX12::sendWriteU16Packet(int id, int address, int value){
@@ -165,12 +177,19 @@ void DynamixelAX12::sendWriteU16Packet(int id, int address, int value){
       DXL_HIBYTE(value));
     stream->write(txbuffer,bufsize);
     stream->flush();
+    #ifdef DEBUG
+      Serial1.print(" [DEBUG] Sent WriteU16 -> ");
+      p.toStream(Serial1);
+    #endif
 }
 
 // from http://stackoverflow.com/a/133363/195061
 #define FSM
-//#define STATE(x)        s_##x : if(!stream->readBytes(&BUFFER[I++],1)) goto s_timeout ; if(I>=SIZE) goto s_overflow; Serial1.println(BUFFER[I-1]); sn_##x :   // for debug
-#define STATE(x)        s_##x : if(!stream->readBytes(&BUFFER[I++],1)) goto s_timeout ; if(I>=SIZE) goto s_overflow; sn_##x :
+#ifdef DEBUG
+  #define STATE(x)  s_##x : if(!stream->readBytes(&BUFFER[I++],1)) goto s_timeout ; if(I>=SIZE) goto s_overflow; Serial1.print(BUFFER[I-1]); Serial1.print(" "); sn_##x :   // for debug
+#else
+  #define STATE(x)  s_##x : if(!stream->readBytes(&BUFFER[I++],1)) goto s_timeout ; if(I>=SIZE) goto s_overflow; sn_##x :
+#endif
 #define THISBYTE        (BUFFER[I-1])
 #define NEXTSTATE(x)    goto s_##x
 #define NEXTSTATE_NR(x) goto sn_##x
@@ -181,6 +200,10 @@ int DynamixelAX12::receivePacket(unsigned char *BUFFER, size_t SIZE) {
     int C;
     int I = 0;
     int length = 0;
+
+    #ifdef DEBUG
+      Serial1.print(" [DEBUG] Received -> ");
+    #endif
 
     // state names normally name the last parsed symbol
     FSM {
@@ -199,30 +222,35 @@ int DynamixelAX12::receivePacket(unsigned char *BUFFER, size_t SIZE) {
         length = THISBYTE;
       }
       STATE(length) {
-        //Serial1.print("length="); Serial1.println(length);
         // instr = THISBYTE;
       }
       STATE(instr) {
-        //Serial1.print("STATE(instr) I=");Serial1.println(I);   // for debug
         // check length because action and reboot commands have no parameters
         if(I-length>=3) NEXTSTATE(checksum);
       }
       STATE(params) {
-        //Serial1.print("STATE(params) I=");Serial1.println(I);   // for debug
         // check length and maybe skip to checksum
         if(I-length>=3) NEXTSTATE(checksum);
         // or keep reading params
         NEXTSTATE(params);
       }
       STATE(checksum) {
-        //Serial1.print("STATE(checksum) I=");Serial1.println(I);   // for debug
+        #ifdef DEBUG
+          Serial1.println();
+        #endif
         // done
         return I;
       }
       TIMEOUT {
+        #ifdef DEBUG
+          Serial1.println("Timeout");
+        #endif
         return ERROR_TIMEOUT;
       }
       OVERFLOW {
+        #ifdef DEBUG
+          Serial1.println("Overflow");
+        #endif
         return ERROR_OVERFLOW;
       }
     }
@@ -277,23 +305,12 @@ DynamixelAX12::Packet::~Packet() {
 }
 
 void DynamixelAX12::Packet::toStream(Stream &stream) {
-  stream.print("id: ");
-  stream.println(this->getId(),DEC);
-  stream.print("length: ");
-  stream.println(this->getLength(),DEC);
-  stream.print("instruction: ");
-  stream.println(this->getInstruction(),HEX);
-  stream.print("parameter count: ");
-  stream.println(this->getParameterCount(), DEC);
-  for(int i=0;i<this->getParameterCount(); i++) {
-    stream.print(this->getParameter(i),HEX);
-    if(i<this->getParameterCount()-1) {
-      stream.print(",");
-    }
+  for(int i=0; i<getSize(); i++) {
+    stream.print(this->data[i], HEX);
+    stream.print(" ");
   }
-  stream.println();
-  stream.print("valid: ");
-  stream.println(this->isValid()?"yes":"no");
+  stream.print(" (valid: ");
+  stream.println(isValid()?"yes)":"no)");
 }
 
 unsigned char DynamixelAX12::Packet::getId() {
@@ -323,7 +340,7 @@ unsigned char DynamixelAX12::Packet::getParameter(int n) {
 bool DynamixelAX12::Packet::isValid() {
     int length = getLength();
     unsigned short storedChecksum = data[length+3];
-    return storedChecksum == this->update_checksum(data, 2, 1+length);
+    return storedChecksum == update_checksum(data, 2, 1+length);
 }
 
 unsigned char DynamixelAX12::Packet::update_checksum(unsigned char *data_blk_ptr, int data_blk_start, int data_blk_size) {

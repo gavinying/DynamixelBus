@@ -4,12 +4,11 @@
  Copyright (c) 2011 Savage Electronics.
  And Dynamixel Pro library for OpenCM-9.04 made by ROBOTIS, LTD.
  And Arduino library for Dynamixel XL-320 made by hackerspace-adelaide/XL320
-
  Thanks to all the above authors for the great work!
 
- Modified to work with both packet sending and receiving functions.
-
  Modifications made by Ying Shaodong <helloysd@gmail.com>
+ 1) Modified to work with both packet sending and receiving functions;
+ 2) Support debug function on ESP8266 Serial1 port
 
  This file can be used and be modified by anyone under GPL v2.0
 
@@ -17,6 +16,8 @@
 
 #include "Arduino.h"
 #include <DynamixelXL320.h>
+
+//#define DEBUG
 
 // Select the Switch to TX/RX Mode Pin
 #define RX  0
@@ -36,39 +37,39 @@ void DynamixelXL320::begin(Stream &stream, int pin_d) {
   pin_direction = pin_d;
   pinMode(pin_direction, OUTPUT);
   this->stream = &stream;
-  stream.setTimeout(1000);  // timeout = 1 second
+  stream.setTimeout(10);  // timeout = 10 millisecond
 }
 
 int DynamixelXL320::searchId() {
   setDirection(TX);
-  p2_sendReadPacket(BROADCAST_ADDRESS, XL320_ID, 1);
+  sendPingPacket();
   setDirection(RX);
   unsigned char buffer[MAXNUM_RX_PACKET];
-  int ret = p2_receivePacket(buffer,MAXNUM_RX_PACKET);
+  int ret = receivePacket(buffer,MAXNUM_RX_PACKET);
   if(ret < 0) {
     return ret;
   }
   else {
     Packet p(buffer,MAXNUM_RX_PACKET);
-    if(p.isValid() && p.getParameterCount()>=1) {
-      return p.getParameter(0);
+    if(p.isValid()) {
+      return p.getId();
     } else {
       return ERROR_INVALID;
     }
   }
 }
 
-void DynamixelXL320::setId(int targetId) {
+void DynamixelXL320::setId(int id, int targetId) {
   setDirection(TX);
-  p2_sendWriteU8Packet(BROADCAST_ADDRESS, XL320_ID, targetId);
+  sendWriteU8Packet(id, XL320_ID, targetId);
 }
 
 int DynamixelXL320::getBaudrate(int id) {
   setDirection(TX);
-  p2_sendReadPacket(id, XL320_BAUD_RATE, 1);
+  sendReadPacket(id, XL320_BAUD_RATE, 1);
   setDirection(RX);
   unsigned char buffer[MAXNUM_RX_PACKET];
-  int ret = this->p2_receivePacket(buffer,MAXNUM_RX_PACKET);
+  int ret = this->receivePacket(buffer,MAXNUM_RX_PACKET);
   if(ret < 0) {
     return ret;
   }
@@ -84,7 +85,7 @@ int DynamixelXL320::getBaudrate(int id) {
 
 void DynamixelXL320::setBaudrate(int id, int value) {
   setDirection(TX);
-  p2_sendWriteU8Packet(id, XL320_BAUD_RATE, value);
+  sendWriteU8Packet(id, XL320_BAUD_RATE, value);
 }
 
 void DynamixelXL320::setLed(int id, char led_color[]){
@@ -114,15 +115,15 @@ void DynamixelXL320::setLed(int id, char led_color[]){
     val = 7;
   }
   setDirection(TX);
-  p2_sendWriteU8Packet(id, XL320_LED, val);
+  sendWriteU8Packet(id, XL320_LED, val);
 }
 
 int DynamixelXL320::getJointPosition(int id) {
   setDirection(TX);
-  p2_sendReadPacket(id, XL320_PRESENT_POSITION, 2);
+  sendReadPacket(id, XL320_PRESENT_POSITION, 2);
   setDirection(RX);
   unsigned char buffer[MAXNUM_RX_PACKET];
-  int ret = this->p2_receivePacket(buffer,MAXNUM_RX_PACKET);
+  int ret = this->receivePacket(buffer,MAXNUM_RX_PACKET);
   if(ret < 0) {
     return ret;
   }
@@ -131,20 +132,27 @@ int DynamixelXL320::getJointPosition(int id) {
     if(p.isValid() && p.getParameterCount()>=3) {
       return (p.getParameter(1))|(p.getParameter(2)<<8);
     } else {
+      #ifdef DEBUG
+        Serial1.println("Invalid");
+      #endif
       return ERROR_INVALID;
     }
   }
 }
 
-void DynamixelXL320::p2_sendPingPacket(){
+void DynamixelXL320::sendPingPacket(){
   const int bufsize = 10;
   byte txbuffer[bufsize];
-  Packet p(txbuffer,bufsize,0xFE,1,0);
-  stream->write(txbuffer,p.getSize());
+  Packet p(txbuffer,bufsize,BROADCAST_ADDRESS,1,0);
+  stream->write(txbuffer,bufsize);
   stream->flush();
+  #ifdef DEBUG
+    Serial1.print(" [DEBUG] Sent Ping -> ");
+    p.toStream(Serial1);
+  #endif
 }
 
-void DynamixelXL320::p2_sendReadPacket(int id, int address, int length){
+void DynamixelXL320::sendReadPacket(int id, int address, int length){
     const int bufsize = 16;   // It should be 14 according to ROBOTIS e-Manual v1.27.00
     byte txbuffer[bufsize];
     Packet p(txbuffer,bufsize,id,0x02,4,
@@ -154,9 +162,13 @@ void DynamixelXL320::p2_sendReadPacket(int id, int address, int length){
       DXL_HIBYTE(length));
     stream->write(txbuffer,bufsize);
     stream->flush();
+    #ifdef DEBUG
+      Serial1.print(" [DEBUG] Sent Read -> ");
+      p.toStream(Serial1);
+    #endif
 }
 
-void DynamixelXL320::p2_sendWriteU8Packet(int id, int address, int value){
+void DynamixelXL320::sendWriteU8Packet(int id, int address, int value){
     const int bufsize = 13;
     byte txbuffer[bufsize];
     Packet p(txbuffer,bufsize,id,0x03,3,
@@ -165,9 +177,13 @@ void DynamixelXL320::p2_sendWriteU8Packet(int id, int address, int value){
       DXL_LOBYTE(value));
     stream->write(txbuffer,bufsize);
     stream->flush();
+    #ifdef DEBUG
+      Serial1.print(" [DEBUG] Sent WriteU8 -> ");
+      p.toStream(Serial1);
+    #endif
 }
 
-void DynamixelXL320::p2_sendWriteU16Packet(int id, int address, int value){
+void DynamixelXL320::sendWriteU16Packet(int id, int address, int value){
     const int bufsize = 14;
     byte txbuffer[bufsize];
     Packet p(txbuffer,bufsize,id,0x03,4,
@@ -177,22 +193,33 @@ void DynamixelXL320::p2_sendWriteU16Packet(int id, int address, int value){
       DXL_HIBYTE(value));
     stream->write(txbuffer,bufsize);
     stream->flush();
+    #ifdef DEBUG
+      Serial1.print(" [DEBUG] Sent WriteU16 -> ");
+      p.toStream(Serial1);
+    #endif
 }
 
 // from http://stackoverflow.com/a/133363/195061
 #define FSM
-//#define STATE(x)        s_##x : if(!stream->readBytes(&BUFFER[I++],1)) goto s_timeout ; if(I>=SIZE) goto s_overflow; Serial1.println(BUFFER[I-1]); sn_##x :   // for debug
-#define STATE(x)        s_##x : if(!stream->readBytes(&BUFFER[I++],1)) goto s_timeout ; if(I>=SIZE) goto s_overflow; sn_##x :
+#ifdef DEBUG
+  #define STATE(x)  s_##x : if(!stream->readBytes(&BUFFER[I++],1)) goto s_timeout ; if(I>=SIZE) goto s_overflow; Serial1.print(BUFFER[I-1],HEX); Serial1.print(" "); sn_##x :   // for debug
+#else
+  #define STATE(x)  s_##x : if(!stream->readBytes(&BUFFER[I++],1)) goto s_timeout ; if(I>=SIZE) goto s_overflow; sn_##x :
+#endif
 #define THISBYTE        (BUFFER[I-1])
 #define NEXTSTATE(x)    goto s_##x
 #define NEXTSTATE_NR(x) goto sn_##x
 #define TIMEOUT         s_timeout :
 #define OVERFLOW        s_overflow :
 
-int DynamixelXL320::p2_receivePacket(unsigned char *BUFFER, size_t SIZE) {
+int DynamixelXL320::receivePacket(unsigned char *BUFFER, size_t SIZE) {
     int C;
     int I = 0;
     int length = 0;
+
+    #ifdef DEBUG
+      Serial1.print(" [DEBUG] Received -> ");
+    #endif
 
     // state names normally name the last parsed symbol
     FSM {
@@ -224,7 +251,6 @@ int DynamixelXL320::p2_receivePacket(unsigned char *BUFFER, size_t SIZE) {
         length += THISBYTE<<8;
       }
       STATE(length_2) {
-        //Serial1.print("STATE(length_2) length="); Serial1.println(length);  // for debug
         // instr = THISBYTE;
       }
       STATE(instr) {
@@ -233,7 +259,6 @@ int DynamixelXL320::p2_receivePacket(unsigned char *BUFFER, size_t SIZE) {
         if(I-length>=5) NEXTSTATE(checksum_1);
       }
       STATE(params) {
-        //Serial1.print("STATE(params) I=");Serial1.println(I);   // for debug
         // check length and maybe skip to checksum
         if(I-length>=5) NEXTSTATE(checksum_1);
         // or keep reading params
@@ -242,14 +267,22 @@ int DynamixelXL320::p2_receivePacket(unsigned char *BUFFER, size_t SIZE) {
       STATE(checksum_1) {
       }
       STATE(checksum_2) {
-        //Serial1.print("STATE(checksum_2) I=");Serial1.println(I);   // for debug
+        #ifdef DEBUG
+          Serial1.println();
+        #endif
         // done
         return I;
       }
       TIMEOUT {
+        #ifdef DEBUG
+          Serial1.println("Timeout");
+        #endif
         return ERROR_TIMEOUT;
       }
       OVERFLOW {
+        #ifdef DEBUG
+          Serial1.println("Overflow");
+        #endif
         return ERROR_OVERFLOW;
       }
     }
@@ -289,7 +322,7 @@ DynamixelXL320::Packet::Packet(
       unsigned char arg = va_arg(args, int);
       this->data[8+i]=arg;
     }
-    unsigned short crc = this->update_crc(0,this->data,this->getSize()-2);
+    unsigned short crc = this->update_crc(0,this->data,getSize()-2);
     this->data[8+parameter_data_size]=crc&0xff;
     this->data[9+parameter_data_size]=(crc>>8)&0xff;
     va_end(args);
@@ -308,23 +341,12 @@ DynamixelXL320::Packet::~Packet() {
 }
 
 void DynamixelXL320::Packet::toStream(Stream &stream) {
-  stream.print("id: ");
-  stream.println(this->getId(),DEC);
-  stream.print("length: ");
-  stream.println(this->getLength(),DEC);
-  stream.print("instruction: ");
-  stream.println(this->getInstruction(),HEX);
-  stream.print("parameter count: ");
-  stream.println(this->getParameterCount(), DEC);
-  for(int i=0;i<this->getParameterCount(); i++) {
-    stream.print(this->getParameter(i),HEX);
-    if(i<this->getParameterCount()-1) {
-      stream.print(",");
-    }
+  for(int i=0; i<getSize(); i++) {
+    stream.print(this->data[i], HEX);
+    stream.print(" ");
   }
-  stream.println();
-  stream.print("valid: ");
-  stream.println(this->isValid()?"yes":"no");
+  stream.print(" (valid: ");
+  stream.println(isValid()?"yes)":"no)");
 }
 
 unsigned char DynamixelXL320::Packet::getId() {
@@ -354,7 +376,7 @@ unsigned char DynamixelXL320::Packet::getParameter(int n) {
 bool DynamixelXL320::Packet::isValid() {
     int length = getLength();
     unsigned short storedChecksum = data[length+5]+(data[length+6]<<8);
-    return storedChecksum == this->update_crc(0,data,length+5);
+    return storedChecksum == update_crc(0,data,length+5);
 }
 
 unsigned short DynamixelXL320::Packet::update_crc(unsigned short crc_accum, unsigned char *data_blk_ptr, unsigned short data_blk_size) {
