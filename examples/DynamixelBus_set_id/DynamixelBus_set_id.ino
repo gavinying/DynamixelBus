@@ -3,10 +3,12 @@
 // DynamixelBus Arduino library example
 // ========================================
 
-#include "DynamixelBus.h"
+#include "DynamixelXL320.h"
+//#include "DynamixelAX12.h"
 
 // Name your robot!
-DynamixelBus robot;
+DynamixelXL320 robot;
+//DynamixelAX12 robot;
 
 // Set the target servoID to talk to
 int currentId = -1;
@@ -49,5 +51,5 @@ void loop() {
       Serial1.print("Set Servo ID to "); Serial1.println(targetId);
     }
   }
-  delay(3000);
+  delay(2000);
 }

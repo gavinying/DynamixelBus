@@ -3,13 +3,15 @@
 // DynamixelBus Arduino library example
 // ========================================
 
-#include "DynamixelBus.h"
+#include "DynamixelXL320.h"
+//#include "DynamixelAX12.h"
 
 // Name your robot!
-DynamixelBus robot;
+DynamixelXL320 robot;
+//DynamixelAX12 robot;
 
 // Set some variables for incrementing position & LED colour
-char rgb[] = "rgbypcwo";
+char rgb[] = "orgbypcw";
 int ledColour = 0;
 int servoPosition = 0;
 
@@ -64,7 +66,7 @@ void loop() {
   Serial1.print("current position: "); Serial1.println(currentPosition);
   if(currentPosition != -1) {
     robot.setLed(servoID, &rgb[ledColour]);
-    ledColour = (ledColour + 1) % 3;
+    ledColour = (ledColour + 1) % 4;
   }
   
   // Set a delay to account for the receive delay period

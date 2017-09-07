@@ -3,10 +3,12 @@
 // DynamixelBus Arduino library example
 // ========================================
 
-#include "DynamixelBus.h"
+#include "DynamixelXL320.h"
+//#include "DynamixelAX12.h"
 
 // Name your robot!
-DynamixelBus robot;
+DynamixelXL320 robot;
+//DynamixelAX12 robot;
 
 int targetBaud = 3;   // 0: 9600, 1:57600, 2:115200, 3:1Mbps
 
@@ -36,5 +38,5 @@ void setup() {
 void loop() { 
   robot.setBaudrate(254, targetBaud);
   Serial1.print("Set Baudrate to "); Serial1.println(targetBaud);
-  delay(3000);
+  delay(2000);
 }
