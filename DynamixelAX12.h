@@ -19,22 +19,11 @@
 
 #include <inttypes.h>
 #include <Stream.h>
+#include "Dynamixel.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#define BROADCAST_ADDRESS   (254)
-#define MAXNUM_TX_PACKET    (255)
-#define MAXNUM_RX_PACKET    (255)
-
-/*utility for value*/
-#define DXL_MAKEWORD(a, b)      ((unsigned short)(((unsigned char)(((unsigned long)(a)) & 0xff)) | ((unsigned short)((unsigned char)(((unsigned long)(b)) & 0xff))) << 8))
-#define DXL_MAKEDWORD(a, b)     ((unsigned int)(((unsigned short)(((unsigned long)(a)) & 0xffff)) | ((unsigned int)((unsigned short)(((unsigned long)(b)) & 0xffff))) << 16))
-#define DXL_LOWORD(l)           ((unsigned short)(((unsigned long)(l)) & 0xffff))
-#define DXL_HIWORD(l)           ((unsigned short)((((unsigned long)(l)) >> 16) & 0xffff))
-#define DXL_LOBYTE(w)           ((unsigned char)(((unsigned long)(w)) & 0xff))
-#define DXL_HIBYTE(w)           ((unsigned char)((((unsigned long)(w)) >> 8) & 0xff))
 
 /*EEPROM Area*/
 #define AX12_MODEL_NUMBER_L           0
@@ -92,12 +81,16 @@ public:
   void begin(Stream &stream, int pin_d);
 
   int searchId();
-  void setId(int id);
+  int setId(int id, int newId);
   int getBaudrate(int id);
-  void setBaudrate(int id, int value);
-  void setLed(int id, char led_color[]);
-
-  int getJointPosition(int id);
+  int setBaudrate(int id, int value);
+  int setLed(int id, int value);
+  int getModelNumber(int id);
+  int setTorqueEnable(int id, bool value);
+  int setControlMode(int id, int value);
+  int getGoalPosition(int id);
+  int setGoalPosition(int id, int value);
+  int getPresentPosition(int id);
 
   void sendPingPacket();
   void sendReadPacket(int id, int address, int length);
@@ -106,16 +99,16 @@ public:
 
   int receivePacket(unsigned char *buffer, size_t size);
 
-  class Packet {
+  class Dxl_Packet {
     bool freeData;
   public:
     unsigned char *data;
     size_t data_size;
 
-    Packet(unsigned char *data, size_t size);
-    Packet(unsigned char *data, size_t size, unsigned char id, unsigned char instruction, int parameter_data_size, ...);
+    Dxl_Packet(unsigned char *data, size_t size);
+    Dxl_Packet(unsigned char *data, size_t size, unsigned char id, unsigned char instruction, int parameter_data_size, ...);
 
-    ~Packet();
+    ~Dxl_Packet();
     unsigned char getId();
     int getLength();
     int getSize();

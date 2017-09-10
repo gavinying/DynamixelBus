@@ -10,10 +10,10 @@
 DynamixelXL320 robot;
 //DynamixelAX12 robot;
 
-int targetBaud = 3;   // 0: 9600, 1:57600, 2:115200, 3:1Mbps
+int servoId = 2;
+int currentBaudrate = 3;  // 0: 9600, 1:57600, 2:115200, 3:1Mbps
+int newBaudrate = 2;      // 0: 9600, 1:57600, 2:115200, 3:1Mbps
 
-int pin_led = 2;  // Internal LED
-//int pin_led = LED_BUILTIN;  // Onboard LED
 int pin_direction = 12;
 
 void setup() {
@@ -21,8 +21,15 @@ void setup() {
   pinMode(pin_led, OUTPUT);
   digitalWrite(pin_led, LOW);    // turn the LED on
 
-  //Serial.begin(115200);
-  Serial.begin(1000000);
+  if(currentBaudrate == 0) 
+    Serial.begin(9600);
+  else if(currentBaudrate == 1)
+    Serial.begin(57600);
+  else if(currentBaudrate == 2)
+    Serial.begin(115200);
+  else if(currentBaudrate == 3)
+    Serial.begin(1000000);
+  
   Serial1.begin(115200);
 
   // Swap serial
@@ -36,7 +43,7 @@ void setup() {
 }
 
 void loop() { 
-  robot.setBaudrate(254, targetBaud);
-  Serial1.print("Set Baudrate to "); Serial1.println(targetBaud);
+  robot.setBaudrate(servoId, newBaudrate);
+  Serial1.print("Set Baudrate to "); Serial1.println(newBaudrate);
   delay(2000);
 }
