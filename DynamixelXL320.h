@@ -64,6 +64,8 @@ extern "C" {
 #define XL320_HARDWARE_ERROR           50
 #define XL320_PUNCH                    51
 
+unsigned short XL320_update_crc(unsigned short crc_accum, unsigned char *data_blk_ptr, unsigned short data_blk_size);
+
 #ifdef __cplusplus
 }
 #endif
@@ -89,13 +91,14 @@ public:
   int setControlMode(int id, int value);
   int getGoalPosition(int id);
   int setGoalPosition(int id, int value);
+  int setSyncGoalPosition(int id_size, int value[]);
   int getPresentPosition(int id);
 
   void sendPingPacket();
   void sendReadPacket(int id, int address, int length);
   void sendWriteU8Packet(int id, int address, int value);
   void sendWriteU16Packet(int id, int address, int value);
-
+  void sendSyncWriteU16Packet(int id_size, int address, int value[]);
   int receivePacket(unsigned char *buffer, size_t size);
 
   class DxlV2_Packet {
@@ -117,7 +120,6 @@ public:
     bool isValid();
 
     void toStream(Stream &stream);
-    unsigned short update_crc(unsigned short crc_accum, unsigned char *data_blk_ptr, unsigned short data_blk_size);
   };
 
 };
