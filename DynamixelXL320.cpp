@@ -243,6 +243,25 @@ int DynamixelXL320::getGoalPosition(int id) {
   return ret;
 }
 
+int DynamixelXL320::getSyncGoalPosition(int id_size, int values[]) {
+  int ret = NO_ERROR;
+  setDirection(TX);
+  sendSyncReadU16Packet(id_size, XL320_GOAL_POSITION, 2);
+  setDirection(RX);
+  for(int i=0; i<id_size; i++) {
+    unsigned char buffer[MAXNUM_RX_PACKET];
+    ret = receivePacket(buffer,MAXNUM_RX_PACKET);
+    if(ret >= 0) {
+      DxlV2_Packet p(buffer,MAXNUM_RX_PACKET);
+      if(p.isValid() && p.getParameterCount()>=3) {
+        int id = p.getId();
+        values[id] = (p.getParameter(1))|(p.getParameter(2)<<8);
+      }
+    }
+  }
+  return ret;
+}
+
 int DynamixelXL320::setGoalPosition(int id, int value) {
   int ret = NO_ERROR;
   setDirection(TX);
@@ -304,14 +323,14 @@ void DynamixelXL320::sendPingPacket(){
   #endif
 }
 
-void DynamixelXL320::sendReadPacket(int id, int address, int length){
+void DynamixelXL320::sendReadPacket(int id, int address, int reg_size){
   const int bufsize = 15;   // It should be 14 according to ROBOTIS e-Manual v1.27.00
   byte txbuffer[bufsize];
   DxlV2_Packet p(txbuffer,bufsize,id,0x02,4,
     DXL_LOBYTE(address),
     DXL_HIBYTE(address),
-    DXL_LOBYTE(length),
-    DXL_HIBYTE(length));
+    DXL_LOBYTE(reg_size),
+    DXL_HIBYTE(reg_size));
   stream->write(txbuffer,bufsize);
   stream->flush();
   #ifdef DEBUG
@@ -336,7 +355,7 @@ void DynamixelXL320::sendWriteU8Packet(int id, int address, int value){
 }
 
 void DynamixelXL320::sendWriteU16Packet(int id, int address, int value){
-  const int bufsize = 16;   // should be 14
+  const int bufsize = 15;   // should be 14
   byte txbuffer[bufsize];
   DxlV2_Packet p(txbuffer,bufsize,id,0x03,4,
     DXL_LOBYTE(address),
@@ -370,7 +389,7 @@ void DynamixelXL320::sendSyncWriteU16Packet(int id_size, int address, int values
   txbuffer[10]=DXL_LOBYTE(2);
   txbuffer[11]=DXL_HIBYTE(2);
   for(int i=0;i<id_size;i++) {
-    txbuffer[12+i*3]=i;
+    txbuffer[12+i*3]=i+1;
     txbuffer[13+i*3]=DXL_LOBYTE(values[i]);
     txbuffer[14+i*3]=DXL_HIBYTE(values[i]);
   }
@@ -381,7 +400,48 @@ void DynamixelXL320::sendSyncWriteU16Packet(int id_size, int address, int values
   stream->flush();
   #ifdef DEBUG
     Serial1.print(" [DEBUG] Sent SyncWriteU16 -> ");
-    p.toStream(Serial1);
+    for(int i=0; i<bufsize-1; i++) {
+      Serial1.print(txbuffer[i], HEX);
+      Serial1.print(" ");
+    }
+    Serial1.println();
+  #endif
+}
+
+// not working - only return one response
+void DynamixelXL320::sendSyncReadU16Packet(int id_size, int address, int reg_size){
+  unsigned int parameter_data_size = 4 + id_size;
+  unsigned int length = 3 + parameter_data_size;
+  const int bufsize = 7 + length + 1;   // with additional 1 byte
+  byte txbuffer[bufsize];
+  // [ff][ff][fd][00][id][len1][len2] { [instr][params(parameter_data_size)][crc1][crc2] }
+  txbuffer[0]=0xFF;
+  txbuffer[1]=0xFF;
+  txbuffer[2]=0xFD;
+  txbuffer[3]=0x00;
+  txbuffer[4]=BROADCAST_ADDRESS;
+  txbuffer[5]=DXL_LOBYTE(length);
+  txbuffer[6]=DXL_HIBYTE(length);
+  txbuffer[7]=0x82;
+  txbuffer[8]=DXL_LOBYTE(address);
+  txbuffer[9]=DXL_HIBYTE(address);
+  txbuffer[10]=DXL_LOBYTE(reg_size);
+  txbuffer[11]=DXL_HIBYTE(reg_size);
+  for(int i=0;i<id_size;i++) {
+    txbuffer[12+i]=i+1;
+  }
+  unsigned short crc = XL320_update_crc(0, txbuffer, length+5);
+  txbuffer[length+5]=DXL_LOBYTE(crc);
+  txbuffer[length+6]=DXL_HIBYTE(crc);
+  stream->write(txbuffer, bufsize);
+  stream->flush();
+  #ifdef DEBUG
+    Serial1.print(" [DEBUG] Sent SyncReadU16 -> ");
+    for(int i=0; i<bufsize-1; i++) {
+      Serial1.print(txbuffer[i], HEX);
+      Serial1.print(" ");
+    }
+    Serial1.println();
   #endif
 }
 
@@ -399,7 +459,6 @@ void DynamixelXL320::sendSyncWriteU16Packet(int id_size, int address, int values
 #define OVERFLOW        s_overflow :
 
 int DynamixelXL320::receivePacket(unsigned char *BUFFER, size_t SIZE) {
-  int C;
   int I = 0;
   int length = 0;
 

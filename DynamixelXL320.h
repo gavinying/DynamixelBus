@@ -90,15 +90,17 @@ public:
   int setTorqueEnable(int id, bool value);
   int setControlMode(int id, int value);
   int getGoalPosition(int id);
+  int getSyncGoalPosition(int id_size, int values[]);
   int setGoalPosition(int id, int value);
-  int setSyncGoalPosition(int id_size, int value[]);
+  int setSyncGoalPosition(int id_size, int values[]);
   int getPresentPosition(int id);
 
   void sendPingPacket();
   void sendReadPacket(int id, int address, int length);
   void sendWriteU8Packet(int id, int address, int value);
   void sendWriteU16Packet(int id, int address, int value);
-  void sendSyncWriteU16Packet(int id_size, int address, int value[]);
+  void sendSyncWriteU16Packet(int id_size, int address, int values[]);
+  void sendSyncReadU16Packet(int id_size, int address, int reg_size);
   int receivePacket(unsigned char *buffer, size_t size);
 
   class DxlV2_Packet {
