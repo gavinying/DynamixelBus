@@ -22,7 +22,7 @@
 // Select the Switch to TX/RX Mode Pin
 #define RX  0
 #define TX  1
-#define setDirection(Mode) digitalWrite(pin_direction,Mode);
+#define setDirection(Mode) digitalWrite(pin_direction,Mode);delay(5);
 
 unsigned short XL320_update_crc(unsigned short crc_accum, unsigned char *data_blk_ptr, unsigned short data_blk_size) {
   unsigned short i, j;

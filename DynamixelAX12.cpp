@@ -22,7 +22,7 @@
 // Select the Switch to TX/RX Mode Pin
 #define RX  0
 #define TX  1
-#define setDirection(Mode) digitalWrite(pin_direction,Mode);
+#define setDirection(Mode) digitalWrite(pin_direction,Mode);delay(5);
 
 DynamixelAX12::DynamixelAX12() {
 }
