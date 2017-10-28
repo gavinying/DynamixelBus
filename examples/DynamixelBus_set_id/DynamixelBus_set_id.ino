@@ -1,6 +1,10 @@
-
 // ========================================
-// DynamixelBus Arduino library example
+// DynamixelBus_set_id
+// Author: Ying Shaodong <helloysd@gmail.com>
+// Usage: 
+//  1. Set expected currentId and newId, compile and program; 
+//  2. The number of onboard LED flashing indicates current servo ID; 
+//  3. The servo LED (RED) will be on if new ID is set successfully; 
 // ========================================
 
 #include "DynamixelXL320.h"
@@ -11,13 +15,10 @@ DynamixelXL320 robot;
 //DynamixelAX12 robot;
 
 // Current servo ID
-int currentId = 2;
+int currentId = 7;
 // The new servo ID
 int newId = 1;
 
-char rgb[] = "rgbypcwo";
-
-//int pin_led = 2;  // Internal LED
 int pin_led = LED_BUILTIN;  // Onboard LED
 int pin_direction = 12;
 
@@ -36,7 +37,7 @@ void led_off(int pin) {
 void setup() {
   // Led
   pinMode(pin_led, OUTPUT);
-  digitalWrite(pin_led, LOW);    // turn the LED on
+  led_off(pin_led);
 
   // Talking standard serial, so connect servo data line to Digital TX 1
   // Comment out this line to talk software serial
@@ -48,30 +49,38 @@ void setup() {
 
   // Initialise your robot
   robot.begin(Serial, pin_direction); // Hand in the serial object you're using
-
+  robot.setLed(BROADCAST_ADDRESS, LED_OFF); // LED off
+  
   delay(3000);
 }
 
 void loop() {
+  led_off(pin_led);
+  delay(2000);
+  
   // Check Servo ID, make sure only one device connected. 
-  led_on(pin_led);
   int id = robot.searchId();
-  if(id < 0) {
-    led_off(pin_led);
+  if(id <= 0) {
     Serial1.println("No device found.");
   }
-  else if(id != currentId) {
-    led_off(pin_led);
-    Serial1.print("Found servo ID: ");Serial1.print(id);Serial1.print(" , but not expected: ");Serial1.println(currentId);
-  }
   else {
-    if(currentId != newId) {
+    for(int i=0;i<id;i++) {
+      led_on(pin_led);
+      delay(200);
       led_off(pin_led);
+      delay(200);
+    }
+    if(id == newId) {
+      Serial1.print("Found servo ID: ");Serial1.print(id);Serial1.println(" ... No need to change. ");
+      robot.setLed(id, LED_RED); // Red LED on in order to be compatible with AX-12 series
+    }
+    else if(id == currentId) {
       robot.setId(currentId, newId);
-      Serial1.print("Set current servo ID from "); Serial1.print(currentId); Serial1.print(" to "); Serial1.println(newId);
+      Serial1.print("Set servo ID from "); Serial1.print(currentId); Serial1.print(" to "); Serial1.println(newId);
+    }
+    else {
+      Serial1.print("Found servo ID: ");Serial1.print(id);Serial1.println(" ... But not expected. ");
     }
   }
-  // LED test.. let's randomly set the colour (0-7)
-  robot.setLed(newId, &rgb[random(0,7)]);
   delay(2000);
 }
