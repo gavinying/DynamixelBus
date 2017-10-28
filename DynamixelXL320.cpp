@@ -222,6 +222,33 @@ int DynamixelXL320::setControlMode(int id, int value) {
   return ret;
 }
 
+int DynamixelXL320::setGoalSpeed(int id, int speed) {
+  int ret = NO_ERROR;
+  setDirection(TX);
+  sendWriteU16Packet(id, XL320_GOAL_SPEED, speed);
+  setDirection(RX);
+  unsigned char buffer[MAXNUM_RX_PACKET];
+  ret = receivePacket(buffer,MAXNUM_RX_PACKET);
+  if(ret >= 0) {
+    DxlV2_Packet p(buffer,MAXNUM_RX_PACKET);
+    if(!p.isValid()) {
+      #ifdef DEBUG
+        Serial1.println("Response Invalid");
+      #endif
+      ret = ERROR_INVALID;
+    }
+  }
+  return ret;
+}
+
+int DynamixelXL320::setSyncGoalSpeed(int id_size, int speed[]) {
+  int ret = NO_ERROR;
+  setDirection(TX);
+  sendSyncWriteU16Packet(id_size, XL320_GOAL_SPEED, speed);
+  setDirection(RX);
+  return ret;
+}
+
 int DynamixelXL320::getGoalPosition(int id) {
   int ret = NO_ERROR;
   setDirection(TX);
@@ -243,10 +270,10 @@ int DynamixelXL320::getGoalPosition(int id) {
   return ret;
 }
 
-int DynamixelXL320::setGoalPosition(int id, int value) {
+int DynamixelXL320::setGoalPosition(int id, int position) {
   int ret = NO_ERROR;
   setDirection(TX);
-  sendWriteU16Packet(id, XL320_GOAL_POSITION, value);
+  sendWriteU16Packet(id, XL320_GOAL_POSITION, position);
   setDirection(RX);
   unsigned char buffer[MAXNUM_RX_PACKET];
   ret = receivePacket(buffer,MAXNUM_RX_PACKET);
@@ -262,11 +289,27 @@ int DynamixelXL320::setGoalPosition(int id, int value) {
   return ret;
 }
 
-int DynamixelXL320::setSyncGoalPosition(int id_size, int values[]) {
+int DynamixelXL320::setGoalPosition(int id, int position, int speed) {
+  int ret = NO_ERROR;
+  ret = setGoalSpeed(id, speed);
+  if (ret != NO_ERROR) return ret;
+  ret = setGoalPosition(id, position);
+  return ret;
+}
+
+int DynamixelXL320::setSyncGoalPosition(int id_size, int position[]) {
   int ret = NO_ERROR;
   setDirection(TX);
-  sendSyncWriteU16Packet(id_size, XL320_GOAL_POSITION, values);
+  sendSyncWriteU16Packet(id_size, XL320_GOAL_POSITION, position);
   setDirection(RX);
+  return ret;
+}
+
+int DynamixelXL320::setSyncGoalPosition(int id_size, int position[], int speed[]) {
+  int ret = NO_ERROR;
+  ret = setSyncGoalSpeed(id_size, speed);
+  if (ret != NO_ERROR) return ret;
+  ret = setSyncGoalPosition(id_size, position);
   return ret;
 }
 

@@ -89,9 +89,13 @@ public:
 
   int setTorqueEnable(int id, bool value);
   int setControlMode(int id, int value);
+  int setGoalSpeed(int id, int speed);
+  int setSyncGoalSpeed(int id_size, int speed[]);
+  int setGoalPosition(int id, int position);
+  int setSyncGoalPosition(int id_size, int position[]);
+  int setGoalPosition(int id, int position, int speed);
+  int setSyncGoalPosition(int id_size, int position[], int speed[]);
   int getGoalPosition(int id);
-  int setGoalPosition(int id, int value);
-  int setSyncGoalPosition(int id_size, int value[]);
   int getPresentPosition(int id);
 
   void sendPingPacket();
