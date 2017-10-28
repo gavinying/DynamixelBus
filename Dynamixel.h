@@ -43,6 +43,15 @@ extern "C" {
 #define DXL_LOBYTE(w)           ((unsigned char)(((unsigned long)(w)) & 0xff))
 #define DXL_HIBYTE(w)           ((unsigned char)((((unsigned long)(w)) >> 8) & 0xff))
 
+#define LED_OFF         (0)
+#define LED_RED         (1)
+#define LED_GREEN       (2)
+#define LED_YELLOW      (3)
+#define LED_BLUE        (4)
+#define LED_PINK        (5)
+#define LED_CYAN        (6)
+#define LED_WHITE       (7)
+
 #ifdef __cplusplus
 }
 #endif
