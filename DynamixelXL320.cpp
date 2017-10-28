@@ -292,7 +292,7 @@ int DynamixelXL320::setGoalPosition(int id, int position) {
 int DynamixelXL320::setGoalPosition(int id, int position, int speed) {
   int ret = NO_ERROR;
   ret = setGoalSpeed(id, speed);
-  if (ret != NO_ERROR) return ret;
+  //if (ret != NO_ERROR) return ret;
   ret = setGoalPosition(id, position);
   return ret;
 }
@@ -308,7 +308,7 @@ int DynamixelXL320::setSyncGoalPosition(int id_size, int position[]) {
 int DynamixelXL320::setSyncGoalPosition(int id_size, int position[], int speed[]) {
   int ret = NO_ERROR;
   ret = setSyncGoalSpeed(id_size, speed);
-  if (ret != NO_ERROR) return ret;
+  //if (ret != NO_ERROR) return ret;
   ret = setSyncGoalPosition(id_size, position);
   return ret;
 }
@@ -413,7 +413,7 @@ void DynamixelXL320::sendSyncWriteU16Packet(int id_size, int address, int values
   txbuffer[10]=DXL_LOBYTE(2);
   txbuffer[11]=DXL_HIBYTE(2);
   for(int i=0;i<id_size;i++) {
-    txbuffer[12+i*3]=i;
+    txbuffer[12+i*3]=i+1;   // servo ID start from 1
     txbuffer[13+i*3]=DXL_LOBYTE(values[i]);
     txbuffer[14+i*3]=DXL_HIBYTE(values[i]);
   }
