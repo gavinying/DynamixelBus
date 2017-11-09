@@ -1,0 +1,37 @@
+#######################################
+# Syntax Coloring Map
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+begin                 KEYWORD2
+searchId              KEYWORD2
+setId                 KEYWORD2
+getBaudrate           KEYWORD2
+setBaudrate           KEYWORD2
+setLed                KEYWORD2
+setTorqueEnable       KEYWORD2
+setControlMode        KEYWORD2
+setGoalSpeed          KEYWORD2
+setSyncGoalSpeed      KEYWORD2
+setGoalPosition       KEYWORD2
+setSyncGoalPosition   KEYWORD2
+setGoalPosition       KEYWORD2
+setSyncGoalPosition   KEYWORD2
+getGoalPosition       KEYWORD2
+getPresentPosition    KEYWORD2
+
+#######################################
+# Instances (KEYWORD2)
+#######################################
+DynamixelXL320        KEYWORD2
+DynamixelAX12         KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
